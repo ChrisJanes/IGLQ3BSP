@@ -232,6 +232,7 @@ public:
 	face get_face(int index) const { return file_faces[index]; }
 	shader get_shader(int index) const { return shaders[index]; }
 	GLuint get_lightmap_tex(int index) const { return lightmaps[index].id; }
+	GLuint get_default_lightmap() const { return file_lightmaps.size(); }
 	int get_face_count() const { return file_faces.size(); }
 	std::vector<unsigned int> get_indices();
 	meshvert get_meshvert(int index) const { return file_meshverts[index]; }

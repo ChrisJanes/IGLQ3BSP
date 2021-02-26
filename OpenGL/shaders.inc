@@ -4,11 +4,11 @@ const char* vertexSource = R"glsl(
 in vec3 position;
 in vec4 colour;
 in vec4 texcoord;
-in vec4 lmcoord;
+in vec2 lmcoord;
 
 out vec4 Colour;
 //out vec4 fragcoord;
-out vec4 lightcoord;
+out vec2 lightcoord;
 
 uniform mat4 view;
 uniform mat4 proj;
@@ -25,7 +25,7 @@ const char* fragmentSource = R"glsl(#version 150 core
 
 in vec4 Colour;
 //in vec4 fragcoord;
-in vec4 lightcoord;
+in vec2 lightcoord;
 
 //uniform sampler2D tex;
 uniform sampler2D lightmap;
@@ -34,6 +34,6 @@ out vec4 outColor;
 
 void main()
 {
-    outColor = texture(lightmap, lightcoord.st) * 3.0 * Colour;
+    outColor = (texture(lightmap, lightcoord) * 3.0) * Colour;
 }
 )glsl";

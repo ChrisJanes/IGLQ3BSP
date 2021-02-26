@@ -67,8 +67,26 @@ void BSPLoader::process_lightmaps()
 		GLenum format = GL_RGB;
 		glTexImage2D(GL_TEXTURE_2D, 0, format, 128, 128, 0, format, GL_UNSIGNED_BYTE, file_lightmaps[i].map);
 		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		lightmaps.push_back(map);
 	}
+
+	// generate a "grey" lightmap for faces with -1 lm index.
+	ubyte* data = new ubyte[128 * 128 * 3];
+	for (unsigned int i = 0; i < 128 * 128 * 3; ++i)
+	{
+		data[i] = (char)64;
+	}
+
+	LightMap map;
+	glGenTextures(1, &map.id);
+	glBindTexture(GL_TEXTURE_2D, map.id);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	lightmaps.push_back(map);
 
 	combine_lightmaps();
 }
@@ -82,7 +100,7 @@ void BSPLoader::combine_lightmaps()
 	ubyte* target = new ubyte[size];
 
 	int targetX = 0;
-	for (int i = 0; i < map_count; ++i)
+	for (int i = 0; i < map_count - 1; ++i)
 	{
 		ubyte* source = file_lightmaps[i].map;
 
@@ -104,6 +122,8 @@ void BSPLoader::combine_lightmaps()
 	GLenum format = GL_RGB;
 	glTexImage2D(GL_TEXTURE_2D, 0, format, width, 128, 0, format, GL_UNSIGNED_BYTE, target);
 	glGenerateMipmap(GL_TEXTURE_2D);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	if (single_draw)
 		update_lm_coords();
@@ -122,12 +142,13 @@ void BSPLoader::update_lm_coords()
 		{
 			// meshIndexArray[face.meshIndexOffset + i] += face.vertexOffset;
 			// meshvert list should translate directly into triangles.
+			if (_face.lm_index < 0) _face.lm_index = lm_count;
 			int vertIndex = _face.meshvert + j;
 			int index = _face.vertex + file_meshverts[vertIndex].offset;
 			float coord = file_vertices[index].texcoord[1][0];
 
 			// rescale u coord to fit the atlas.
-			coord = (coord + _face.lm_index) / file_lightmaps.size();
+			coord = (coord + _face.lm_index) / file_lightmaps.size() ;
 
 			file_vertices[index].texcoord[1][0] = coord;
 		}

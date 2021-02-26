@@ -17,8 +17,17 @@
 
 #include "shaders.inc"
 
+/*
+126, 74
+126, 73
+127, 74
+126, 74
+126, 73
+127, 73
+*/
+
 const bool AllowMouse = true;
-const bool SingleDraw = true;
+const bool SingleDraw = false;
 
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -110,7 +119,7 @@ int main()
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// needs a valid Q3A BSP file.
-	BSPLoader loader{ "Data\\q3dm0.bsp", SingleDraw };
+	BSPLoader loader{ "Data\\cube.bsp", SingleDraw };
 
 	std::vector<vertex> vertices = loader.get_vertex_data();
 	
@@ -307,15 +316,15 @@ int main()
 				face _face = loader.get_face(i);
 				if (_face.type == 1 || _face.type == 3)
 				{
+					int lm = _face.lm_index;
 					shader _shader = loader.get_shader(_face.texture);
 					if (!_shader.render || _shader.transparent) continue; // don't render transparent surfaces yet!
-					if (_face.lm_index < 0) continue; // right now, don't try to draw a face if it doesn't have a lightmap associated with it.
+					if (lm < 0) lm = loader.get_default_lightmap(); // right now, don't try to draw a face if it doesn't have a lightmap associated with it.
 
-					GLuint texId = loader.get_lightmap_tex(_face.lm_index);
+					GLuint texId = loader.get_lightmap_tex(lm);
 
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, texId);
-					//glDrawElements(GL_TRIANGLES, face.meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face.meshIndexOffset * sizeof(GLuint)));
 					glDrawElements(GL_TRIANGLES, _face.n_meshverts, GL_UNSIGNED_INT, (void*)(long)(_face.meshvert * sizeof(GLuint)));
 				}
 
@@ -325,10 +334,10 @@ int main()
 		{
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, loader.get_lm_id());
-
 			// just draw everything in one fell swoop - all renders correctly, but can't easily do lightmaps this way!
 			glDrawElements(GL_TRIANGLES, elements.size(), GL_UNSIGNED_INT, 0);
 		}
+
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			glfwSetWindowShouldClose(window, GL_TRUE);
 
