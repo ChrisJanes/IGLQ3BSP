@@ -29,15 +29,22 @@
 const bool AllowMouse = true;
 const bool SingleDraw = false;
 
+const int ScreenWidth = 1280;
+const int ScreenHeight = 720;
+
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+const std::string file = "Data\\cube.bsp";
+//const std::string file = "Data\\q3dm0.bsp";
 
 float yaw;
 float pitch;
 
 bool firstMouse = true;
-float lastX = 400, lastY = 300;
+float lastX = ScreenWidth / 2.0f;
+float lastY = ScreenHeight / 2.0f;
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -97,7 +104,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// create windowed monitor
-	GLFWwindow* window = glfwCreateWindow(800, 600, "My OpenGL Window", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(ScreenWidth, ScreenHeight, "My OpenGL Window", nullptr, nullptr);
 
 	glfwMakeContextCurrent(window);
 
@@ -119,7 +126,7 @@ int main()
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// needs a valid Q3A BSP file.
-	BSPLoader loader{ "Data\\q3dm0.bsp", SingleDraw };
+	BSPLoader loader{ file, SingleDraw };
 
 	std::vector<vertex> vertices = loader.get_vertex_data();
 	
@@ -292,7 +299,7 @@ int main()
 		GLint uniView = glGetUniformLocation(shaderProgram, "view");
 		glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
-		glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 1.0f, 10000.0f);
+		glm::mat4 proj = glm::perspective(glm::radians(60.0f), (float)ScreenWidth / ScreenHeight, 1.0f, 10000.0f);
 		GLint uniProj = glGetUniformLocation(shaderProgram, "proj");
 		glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -303,7 +310,7 @@ int main()
 		glUniformMatrix4fv(modelProj, 1, GL_FALSE, glm::value_ptr(model));
 
 		ImGui::Render();
-		glViewport(0, 0, 800, 600);
+		glViewport(0, 0, ScreenWidth, ScreenHeight);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
