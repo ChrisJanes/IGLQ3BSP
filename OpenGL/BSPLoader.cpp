@@ -8,11 +8,13 @@ std::vector<unsigned int> BSPLoader::get_indices()
 	// loop all the faces
 	for (int i = 0; i < file_faces.size(); ++i)
 	{
-		auto face = get_face(i);
+		auto& face = file_faces[i];
 
 		// only handle polygon + mesh types at the moment, not patches or billboards.
 		if (face.type == 1 || face.type == 3)
 		{
+			int ind = indices.size();
+
 			// add to the list of indicies based on the meshvert data
 			for (int j = 0; j < face.n_meshverts; ++j)
 			{
@@ -20,8 +22,11 @@ std::vector<unsigned int> BSPLoader::get_indices()
 				// meshvert list should translate directly into triangles.
 				int vertIndex = face.meshvert + j;
 				int index = face.vertex + file_meshverts[vertIndex].offset;
+				
 				indices.push_back(index);
 			}
+
+			face.meshvert = ind;
 		}
 	}
 

@@ -119,7 +119,7 @@ int main()
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// needs a valid Q3A BSP file.
-	BSPLoader loader{ "Data\\cube.bsp", SingleDraw };
+	BSPLoader loader{ "Data\\q3dm0.bsp", SingleDraw };
 
 	std::vector<vertex> vertices = loader.get_vertex_data();
 	
@@ -319,7 +319,7 @@ int main()
 					int lm = _face.lm_index;
 					shader _shader = loader.get_shader(_face.texture);
 					if (!_shader.render || _shader.transparent) continue; // don't render transparent surfaces yet!
-					if (lm < 0) lm = loader.get_default_lightmap(); // right now, don't try to draw a face if it doesn't have a lightmap associated with it.
+					if (lm < 0) lm = loader.get_default_lightmap(); // right now, we'll assign a "default" lightmap to a surface without a valid index.
 
 					GLuint texId = loader.get_lightmap_tex(lm);
 
