@@ -114,6 +114,12 @@
     <ClCompile Include="physfs\physfs_unicode.c">
       <Filter>Source Files\physfs</Filter>
     </ClCompile>
+    <ClCompile Include="MD3Loader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EntityParser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BSPLoader.h">
@@ -160,6 +166,12 @@
     </ClInclude>
     <ClInclude Include="physfs\physfs_platforms.h">
       <Filter>Header Files\physfs</Filter>
+    </ClInclude>
+    <ClInclude Include="MD3Loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityParser.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

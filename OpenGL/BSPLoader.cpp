@@ -3,6 +3,8 @@
 #include "physfs/physfs.h"
 #include <SOIL2/SOIL2.h>
 
+#include "EntityParser.h"
+
 std::vector<unsigned int> BSPLoader::get_indices()
 {
 	return indices;
@@ -197,6 +199,28 @@ void BSPLoader::update_lm_coords()
 	}
 }
 
+void BSPLoader::load_models()
+{
+	// parse the entity lump
+	EntityParser parser;
+
+	std::vector<entity> entities;
+	parser.parse(file_entities.ents, entities);
+
+	for (int i = 0; i < entities.size(); ++i)
+	{
+		// pull out any misc_model entries
+		if (entities[i].get_string("classname") != "misc_model") continue;
+		
+		// load the relevant md3
+		std::string filename = entities[i].get_string("model");
+		std::string path = "data/" + filename;
+
+		// store the data in the models vector.
+		PHYSFS_File* handle = PHYSFS_openRead(path.c_str());
+	}
+}
+
 void BSPLoader::load_file()
 {
 	// open saved file for reading as binary
@@ -212,6 +236,10 @@ void BSPLoader::load_file()
 
 	fs.seekg(offset);
 	fs.read(file_entities.ents, length);
+
+	/*PHYSFS_File* ents = PHYSFS_openWrite("entities.txt");
+	PHYSFS_writeBytes(ents, file_entities.ents, length);
+	PHYSFS_close(ents);*/
 
 	int lightmapCount = file_directory.direntries[14].length / sizeof(lightmap);
 
@@ -247,5 +275,6 @@ void BSPLoader::load_file()
 	build_indices();
 	process_textures();
 	process_lightmaps();
+	load_models();
 }
 

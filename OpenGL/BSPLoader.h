@@ -5,9 +5,10 @@
 #include <vector>
 #include <iostream>
 
-
 #include <GL\glew.h>
 #include <glm\glm.hpp>
+
+#include "MD3Loader.h"
 
 // Q3 BSP format reference: http://www.mralligator.com/q3/
 
@@ -249,6 +250,8 @@ private:
 	void combine_lightmaps();
 	void update_lm_coords();
 
+	void load_models();
+
 	GLuint lmap_id;
 	std::vector<LightMap> lightmaps;
 	std::vector<shader> shaders;
@@ -283,6 +286,8 @@ private:
 	std::vector < lightmap > file_lightmaps;
 	std::vector < lightvol > file_lightvols;
 	visdata file_visdata;
+
+	MD3Loader modelLoader;
 };
 
 // generic function to read lumps that are sizeof/length style.

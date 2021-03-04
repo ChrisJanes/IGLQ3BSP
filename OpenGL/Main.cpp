@@ -289,6 +289,9 @@ int main()
 					if (!_shader.render || _shader.transparent) continue; // don't render transparent surfaces yet!
 					if (lm < 0) lm = loader.get_default_lightmap(); // right now, we'll assign a "default" lightmap to a surface without a valid index.
 
+					if (_face.effect >= 0)
+						continue;
+
 					GLuint texId = loader.get_lightmap_tex(lm);
 
 					glActiveTexture(GL_TEXTURE0);
