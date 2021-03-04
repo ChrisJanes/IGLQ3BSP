@@ -19,6 +19,12 @@
     <Filter Include="Source Files\IMGUI">
       <UniqueIdentifier>{7de921b0-c270-41be-b0a8-a608a45cae07}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\physfs">
+      <UniqueIdentifier>{f19a3d04-cffe-4bc9-95f3-48c69dfa6677}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\physfs">
+      <UniqueIdentifier>{b5bfc7fb-c670-4b25-9d08-05af7a1a5b3c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -48,8 +54,65 @@
     <ClCompile Include="imgui_impl_opengl3.cpp">
       <Filter>Source Files\IMGUI</Filter>
     </ClCompile>
-    <ClCompile Include="image_handler.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="physfs\physfs.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_7z.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_dir.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_grp.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_hog.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_iso9660.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_mvl.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_qpak.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_slb.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_unpacked.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_vdf.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_wad.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_archiver_zip.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_byteorder.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_platform_os2.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_platform_posix.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_platform_qnx.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_platform_unix.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_platform_windows.c">
+      <Filter>Source Files\physfs</Filter>
+    </ClCompile>
+    <ClCompile Include="physfs\physfs_unicode.c">
+      <Filter>Source Files\physfs</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -80,8 +143,23 @@
     <ClInclude Include="imgui_impl_opengl3.h">
       <Filter>Header Files\IMGUI</Filter>
     </ClInclude>
-    <ClInclude Include="stb_image.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="physfs\physfs.h">
+      <Filter>Header Files\physfs</Filter>
+    </ClInclude>
+    <ClInclude Include="physfs\physfs_casefolding.h">
+      <Filter>Header Files\physfs</Filter>
+    </ClInclude>
+    <ClInclude Include="physfs\physfs_internal.h">
+      <Filter>Header Files\physfs</Filter>
+    </ClInclude>
+    <ClInclude Include="physfs\physfs_lzmasdk.h">
+      <Filter>Header Files\physfs</Filter>
+    </ClInclude>
+    <ClInclude Include="physfs\physfs_miniz.h">
+      <Filter>Header Files\physfs</Filter>
+    </ClInclude>
+    <ClInclude Include="physfs\physfs_platforms.h">
+      <Filter>Header Files\physfs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

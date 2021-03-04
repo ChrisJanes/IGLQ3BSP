@@ -119,7 +119,8 @@ struct meshvert
 struct vertex
 {
 	float position[3];
-	float texcoord[2][2];
+	float dtexcoord[2];
+	float lmtexcoord[2];
 	float normal[3];
 	ubyte colour[4];
 };
@@ -197,7 +198,7 @@ struct shader
 	bool render;
 
 	std::string name;
-	unsigned char* tex_data;
+	GLuint id;
 };
 
 struct entities
@@ -240,6 +241,8 @@ public:
 private:
 	void get_lump_position(int index, int& offset, int& length);
 
+	void build_indices();
+
 	void process_textures();
 	void process_lightmaps();
 
@@ -258,6 +261,8 @@ private:
 	bool single_draw;
 
 	int offset, length;
+
+	std::vector<unsigned int> indices;
 
 	Directory file_directory;
 	entities file_entities;

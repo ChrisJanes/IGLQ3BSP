@@ -13,6 +13,8 @@
 
 #include <thread>
 
+#include "physfs/physfs.h"
+
 #include "BSPLoader.h"
 
 #include "shaders.inc"
@@ -36,8 +38,8 @@ glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
-const std::string file = "Data\\cube.bsp";
-//const std::string file = "Data\\q3dm0.bsp";
+//const std::string file = "Data\\cube.bsp";
+const std::string file = "Data\\q3dm0.bsp";
 
 float yaw;
 float pitch;
@@ -94,6 +96,26 @@ void processInput(GLFWwindow* window)
 
 int main()
 {
+	// initialise physfs:
+	PHYSFS_init("");
+	PHYSFS_setSaneConfig("cjanes", "bsp_renderer", "pk3", false, true);
+	PHYSFS_mount("F:/SteamLibrary/steamapps/common/Quake 3 Arena/baseq3/", "/data/", true);
+
+	char** files = PHYSFS_enumerateFiles("/data");
+	char** i;
+	for (i = files; *i != NULL; i++)
+	{
+		std::string file{ *i };
+		if (file.length() > 4 && file.substr(file.length() - 4) == ".pk3")
+		{
+			std::string fullfile = "/data/" + file;
+			std::string path = PHYSFS_getRealDir(fullfile.c_str());
+			path.append(file);
+			PHYSFS_mount(path.c_str(), "/data/", 0);
+		}
+	}
+	PHYSFS_freeList(files);
+
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -104,7 +126,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// create windowed monitor
-	GLFWwindow* window = glfwCreateWindow(ScreenWidth, ScreenHeight, "My OpenGL Window", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(ScreenWidth, ScreenHeight, "OG Q3 BSP Renderer", nullptr, nullptr);
 
 	glfwMakeContextCurrent(window);
 
@@ -197,12 +219,17 @@ int main()
 	glVertexAttribPointer(colAttrib, 4, GL_UNSIGNED_BYTE, GL_TRUE,
 		sizeof(vertex), (void*)(10 * sizeof(float)));
 
+	GLint uvAttrib = glGetAttribLocation(shaderProgram, "texcoord");
+	glVertexAttribPointer(uvAttrib, 2, GL_FLOAT, GL_FALSE,
+		sizeof(vertex), (void*)(3 * sizeof(float)));
+
 	GLint lmAttrib = glGetAttribLocation(shaderProgram, "lmcoord");
 	glVertexAttribPointer(lmAttrib, 2, GL_FLOAT, GL_FALSE,
 		sizeof(vertex), (void*)(5 * sizeof(float)));
 
 	glEnableVertexAttribArray(posAttrib);
 	glEnableVertexAttribArray(colAttrib);
+	glEnableVertexAttribArray(uvAttrib);
 	glEnableVertexAttribArray(lmAttrib);
 
 	int faceCount = loader.get_face_count();
@@ -222,72 +249,6 @@ int main()
 		ImGui::NewFrame();
 
 		processInput(window);
-
-		// IMGui window for printing face info for debugging.
-		{
-			float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-			static int currentFace = 0;
-			ImGui::Begin("BSP Info");                          // Create a window called "Hello, world!" and append into it.
-			ImGui::PushButtonRepeat(true);
-			if (ImGui::ArrowButton("##left", ImGuiDir_::ImGuiDir_Left))
-			{
-				currentFace--;
-
-				if (currentFace < 0)
-					currentFace = faceCount - 1;
-			}
-
-			ImGui::SameLine(0.0f, spacing * 4);
-
-			ImGui::Text("%i/", currentFace + 1);
-
-			ImGui::SameLine(0.0f, 0.0f);
-
-			ImGui::Text("%i", faceCount);
-
-			ImGui::SameLine(0.0f, spacing * 4);
-
-			if (ImGui::ArrowButton("##right", ImGuiDir_::ImGuiDir_Right))
-			{
-				currentFace++;
-				if (currentFace == faceCount)
-					currentFace = 0;
-			}
-			ImGui::PopButtonRepeat();
-
-			face _face = loader.get_face(currentFace);
-
-			ImGui::Text("Face data:");               
-			ImGui::Text("vertex count: %i", _face.n_vertexes);
-			ImGui::Text("face type: %i", _face.type);
-
-			if (ImGui::BeginListBox(""))
-			{
-				for (int j = 0; j < _face.n_meshverts; ++j)
-				{
-					int vertIndex = _face.meshvert + j;
-					int index = _face.vertex + loader.get_meshvert(vertIndex).offset;
-					ImGui::Text("%f %f %f", vertices[index].position[0], 
-											vertices[index].position[1], 
-											vertices[index].position[2]
-					);
-				}
-
-				ImGui::EndListBox();
-			}
-			
-			if (ImGui::Button("Focus on face"))
-			{
-				cameraPos.x = vertices[_face.vertex].position[0];
-				cameraPos.y = vertices[_face.vertex].position[1];
-				cameraPos.z = vertices[_face.vertex].position[2];
-			}
-
-			//ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::End();
-		}
 
 		// build matrices for view, projection and model
 		glm::mat4 view = glm::lookAt(
@@ -331,7 +292,11 @@ int main()
 					GLuint texId = loader.get_lightmap_tex(lm);
 
 					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, _shader.id);
+
+					glActiveTexture(GL_TEXTURE1);
 					glBindTexture(GL_TEXTURE_2D, texId);
+
 					glDrawElements(GL_TRIANGLES, _face.n_meshverts, GL_UNSIGNED_INT, (void*)(long)(_face.meshvert * sizeof(GLuint)));
 				}
 
@@ -339,7 +304,7 @@ int main()
 		}
 		else
 		{
-			glActiveTexture(GL_TEXTURE0);
+			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, loader.get_lm_id());
 			// just draw everything in one fell swoop - all renders correctly, but can't easily do lightmaps this way!
 			glDrawElements(GL_TRIANGLES, elements.size(), GL_UNSIGNED_INT, 0);
