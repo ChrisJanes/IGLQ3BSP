@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <glm/glm.hpp>
 
 const int MAX_QPATH = 64;
@@ -8,34 +9,28 @@ const int MD3_MAX_FRAMES = 1024;
 const int MD3_MAX_TAGS = 16;
 const int MD3_MAX_SURFACES = 32;
 
-class Model {
-
-};
-
-class MD3Vertex {
-	short x;
-	short y;
-	short z;
+struct MD3Vertex {
+	glm::u8vec3 vert;
 	short normal;
 };
 
-class MD3TexCoord {
-	glm::vec3 st;
+struct MD3TexCoord {
+	glm::vec2 st;
 };
 
-class MD3Triangle {
-	int indices[3];
+struct MD3Triangle {
+	int indexes[3];
 };
 
-class MD3Shader {
-	char* name;
+struct MD3Shader {
+	char name[MAX_QPATH];
 	int index;
 };
-
-class MD3Surface {
-	int surface_offset;
-	int ident;
-	char* name;
+	
+struct MD3SurfaceHeader {
+	//int surface_offset;
+	char ident[4];
+	char name[MAX_QPATH];
 	int flags;
 	int num_frames;
 	int num_shaders;
@@ -48,25 +43,39 @@ class MD3Surface {
 	int end_offset;
 };
 
-class MD3Tag {
-	char* name;
+struct Shader {
+	std::string name;
+	int index;
+	int texId;
+};
+
+struct Surface {
+	MD3SurfaceHeader header;
+	std::vector<Shader> shaders;
+	std::vector<MD3Triangle> triangles;
+	std::vector<MD3TexCoord> texcoords;
+	std::vector<MD3Vertex> vertices;
+};
+
+struct MD3Tag {
+	char name[MAX_QPATH];
 	glm::vec3 origin;
 	glm::mat3x3 axis;
 };
 
-class MD3Frame {
+struct MD3Frame {
 	glm::vec3 min_bounds;
 	glm::vec3 max_bounds;
 	glm::vec3 local_origin;
 	float radius;
-	char* name;
+	char name[MAX_QPATH];
 };
 
-class MD3Header {
-	int md3_offset;
-	int ident;
+struct MD3Header {
+	//int md3_offset;
+	char ident[4];
 	int version;
-	char* name;
+	char name[MAX_QPATH];
 	int flags;
 	int num_frames;
 	int num_tags;
@@ -78,6 +87,17 @@ class MD3Header {
 	int end_offset;
 };
 
+class Model {
+public:
+	Model(std::vector<Surface> surfs) : surfaces{ surfs } { }
+	void LoadSurfaceAssets();
+	std::vector<Surface> GetSurfaces() { return surfaces; }
+
+private:
+	std::vector<Surface> surfaces;
+};
+
 class MD3Loader {
-	void Load(std::string filename);
+public:
+	static Model Load(std::string filename);
 };
