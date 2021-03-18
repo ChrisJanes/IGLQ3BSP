@@ -1,6 +1,5 @@
 #include "BSPLoader.h"
 
-#include "physfs/physfs.h"
 #include <SOIL2/SOIL2.h>
 
 #include "EntityParser.h"
@@ -10,7 +9,7 @@
 #include <math.h>
 
 constexpr auto MD3_XYZ_SCALE = (1.0/64);
-const int bezierLevel = 3;
+const int bezierLevel = 10;
 
 vertex operator+(const vertex& v1, const vertex& v2)
 {
@@ -86,10 +85,10 @@ void BSPLoader::process_textures()
 		if (texture.flags & SURF_SKY) _shader.render = false;
 		if (texture.contents & CONTENTS_PLAYERCLIP) _shader.solid = true;
 		if (texture.contents & CONTENTS_TRANSLUCENT) _shader.transparent = true;
-		if (texture.contents & CONTENTS_LAVA  || texture.contents & CONTENTS_WATER ||
+		/*if (texture.contents & CONTENTS_LAVA  || texture.contents & CONTENTS_WATER ||
 			texture.contents & CONTENTS_SLIME || texture.contents & CONTENTS_FOG )
 				_shader.render = false;
-		if (_shader.name == "noshader") _shader.render = false;
+		if (_shader.name == "noshader") _shader.render = false;*/
 		if (_shader.name == "textures/common/caulk") _shader.render = false;
 
 		if (_shader.render)
@@ -354,7 +353,7 @@ void BSPLoader::tesselate(int controlOffset, int controlWidth, int vOffset, int 
 		file_vertices[vOffset + j] = controls[0] * b * b + controls[3] * 2 * b * a + controls[6] * a * a;
 	}
 
-	for (int i = 0; i <= bezierLevel; ++i)
+	for (int i = 1; i <= bezierLevel; ++i)
 	{
 		float a = (float)i / bezierLevel;
 		float b = 1.f - a;
@@ -371,6 +370,7 @@ void BSPLoader::tesselate(int controlOffset, int controlWidth, int vOffset, int 
 		{
 			float a = (float)j / bezierLevel;
 			float b = 1.f - a;
+
 			file_vertices[vOffset + i * L1 + j] = temp[0] * b * b + temp[1] * 2 * b * a + temp[2] * a * a;
 		}
 	}
@@ -380,7 +380,7 @@ void BSPLoader::tesselate(int controlOffset, int controlWidth, int vOffset, int 
 		for (int j = 0; j <= bezierLevel; ++j)
 		{
 			int offset = iOffset + (i * bezierLevel + j) * 6;
-			if(offset >= file_meshverts.size()) break;
+			//if(offset >= file_meshverts.size()) break;
 			indices[offset + 0] = (i    ) * L1 + (j    ) + vOffset;
 			indices[offset + 1] = (i    ) * L1 + (j + 1) + vOffset;
 			indices[offset + 2] = (i + 1) * L1 + (j + 1) + vOffset;
@@ -409,9 +409,10 @@ void BSPLoader::tesselate_patches()
 	int iOffset = indices.size();
 	int vOffset = file_vertices.size();
 
-	int newICount = iOffset + bezierCount * bezierIndexSize;
+	int meshIndexCount = file_directory.direntries[11].length / sizeof(int);
+	int newICount = meshIndexCount + bezierCount * bezierIndexSize;
 
-	file_vertices.resize(file_vertices.size() + bezierCount * bezierPatchSize);
+	file_vertices.resize(file_vertices.size() + (bezierPatchSize * bezierCount));
 	indices.resize(newICount);
 
 	for (auto& face : file_faces)
@@ -439,49 +440,55 @@ void BSPLoader::tesselate_patches()
 void BSPLoader::load_file()
 {
 	// open saved file for reading as binary
-	std::ifstream fs{ file, std::fstream::in | std::fstream::binary };
+	PHYSFS_File *handle = PHYSFS_openRead(file.c_str());
+
 
 	// read directory block
-	fs.read( (char*)&file_directory, sizeof(Directory));
+	PHYSFS_readBytes(handle, (char*)&file_directory, sizeof(Directory));
 
 	// then read each of the data lumps in "order"
 	get_lump_position(0, offset, length);
 
 	file_entities.ents = new char[length];
 
-	fs.seekg(offset);
-	fs.read(file_entities.ents, length);
+	PHYSFS_seek(handle, offset);
+	PHYSFS_readBytes(handle, file_entities.ents, length);
+	//fs.read(file_entities.ents, length);
 
 	int lightmapCount = file_directory.direntries[14].length / sizeof(lightmap);
 
 	// 1 to 15 are array based lumps
-	read_lump<texture>(1, file_textures, fs);
-	read_lump<plane>(2, file_planes, fs);
-	read_lump<node>(3, file_nodes, fs);
-	read_lump<leaf>(4, file_leafs, fs);
-	read_lump<leafface>(5, file_leaffaces, fs);
-	read_lump<leafbrush>(6, file_leafbrushes, fs);
-	read_lump<model>(7, file_models, fs);
-	read_lump<brush>(8, file_brushes, fs);
-	read_lump<brushside>(9, file_brushsides, fs);
-	read_lump<vertex>(10, file_vertices, fs);
-	read_lump<meshvert>(11, file_meshverts, fs);
-	read_lump<effect>(12, file_effects, fs);
-	read_lump<face>(13, file_faces, fs);
-	read_lump<lightmap>(14, file_lightmaps, fs);
-	read_lump<lightvol>(15, file_lightvols, fs);
+	read_lump<texture>(1, file_textures, handle);
+	read_lump<plane>(2, file_planes, handle);
+	read_lump<node>(3, file_nodes, handle);
+	read_lump<leaf>(4, file_leafs, handle);
+	read_lump<leafface>(5, file_leaffaces, handle);
+	read_lump<leafbrush>(6, file_leafbrushes, handle);
+	read_lump<model>(7, file_models, handle);
+	read_lump<brush>(8, file_brushes, handle);
+	read_lump<brushside>(9, file_brushsides, handle);
+	read_lump<vertex>(10, file_vertices, handle);
+	read_lump<meshvert>(11, file_meshverts, handle);
+	read_lump<effect>(12, file_effects, handle);
+	read_lump<face>(13, file_faces, handle);
+	read_lump<lightmap>(14, file_lightmaps, handle);
+	read_lump<lightvol>(15, file_lightvols, handle);
 
 	// 16 is vis data
 	get_lump_position(16, offset, length);
 
-	fs.seekg(offset, std::ios_base::beg);
-	fs.read((char*)&file_visdata, sizeof(int) * 2);
+
+	PHYSFS_seek(handle, offset);
+	
+	PHYSFS_readBytes(handle, (char*)&file_visdata, sizeof(int) * 2);
 	int nvecs = file_visdata.n_vecs;
 	int sz_vecs = file_visdata.sz_vecs;
 	int sz = nvecs * sz_vecs;
 	file_visdata.vecs.resize(sz);
-	fs.read((char*)&file_visdata.vecs[0], sz);
-	fs.close();
+	if (sz > 0)
+		PHYSFS_readBytes(handle, (char*)&file_visdata.vecs[0], sz);
+	
+	PHYSFS_close(handle);
 
 	//load_models();
 	build_indices();

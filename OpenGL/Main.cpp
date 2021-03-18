@@ -27,8 +27,9 @@ glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
-//const std::string file = "Data\\cube.bsp";
-const std::string file = "Data\\q3dm0.bsp";
+//const std::string file = "/data/cube.bsp";
+//const std::string file = "/data/q3dm0.bsp";
+const std::string file = "/data/maps/q3dm0.bsp";
 
 float yaw;
 float pitch;

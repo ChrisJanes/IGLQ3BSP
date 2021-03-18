@@ -8,6 +8,7 @@
 #include <GL\glew.h>
 #include <glm\glm.hpp>
 
+#include "physfs/physfs.h"
 #include "MD3Loader.h"
 
 // Q3 BSP format reference: http://www.mralligator.com/q3/
@@ -267,7 +268,7 @@ private:
 	std::vector<shader> shaders;
 
 	template<class T>
-	void read_lump(int index, std::vector<T>& storage, std::ifstream& fs);
+	void read_lump(int index, std::vector<T>& storage, PHYSFS_File* handle);
 
 	void load_file();
 	std::string file;
@@ -302,7 +303,7 @@ private:
 
 // generic function to read lumps that are sizeof/length style.
 template<class T>
-inline void BSPLoader::read_lump(int index, std::vector<T> &storage, std::ifstream &fs)
+inline void BSPLoader::read_lump(int index, std::vector<T> &storage, PHYSFS_File *handle)
 {
 	get_lump_position(index, offset, length);
 
@@ -313,7 +314,7 @@ inline void BSPLoader::read_lump(int index, std::vector<T> &storage, std::ifstre
 
 	if (length > 0)
 	{
-		fs.seekg(offset);
-		fs.read((char*)&storage[0], length);
+		PHYSFS_seek(handle, offset);
+		PHYSFS_readBytes(handle, (char*)&storage[0], length);
 	}
 }
