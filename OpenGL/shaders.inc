@@ -1,4 +1,4 @@
-const char* vertexSource = R"glsl(
+const char* bspVertexSource = R"glsl(
 #version 150 core
 
 in vec3 position;
@@ -22,7 +22,7 @@ void main()
     gl_Position = proj * view * model * vec4(position, 1.0);
 })glsl";
 
-const char* fragmentSource = R"glsl(#version 150 core
+const char* bspFragmentSource = R"glsl(#version 150 core
 
 in vec4 Colour;
 in vec2 uvcoord;
@@ -35,6 +35,6 @@ out vec4 outColor;
 
 void main()
 {
-    outColor = texture(tex, uvcoord)* 3.0 * texture(lightmap, lightcoord) * Colour;
+    outColor = texture(tex, uvcoord)* 2.0 * texture(lightmap, lightcoord);
 }
 )glsl";

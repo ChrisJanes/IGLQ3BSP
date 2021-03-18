@@ -4,6 +4,33 @@
 #include <SOIL2/SOIL2.h>
 
 #include "EntityParser.h"
+#include "MD3Loader.h"
+
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+constexpr auto MD3_XYZ_SCALE = (1.0/64);
+const int bezierLevel = 3;
+
+vertex operator+(const vertex& v1, const vertex& v2)
+{
+	vertex temp;
+	temp.position = v1.position + v2.position;
+	temp.normal = v1.normal + v2.normal;
+	temp.dtexcoord = v1.dtexcoord + v2.dtexcoord;
+	temp.lmtexcoord = v1.lmtexcoord + v2.lmtexcoord;
+	return temp;
+}
+
+vertex operator*(const vertex& v1, const float& d)
+{
+	vertex temp;
+	temp.position = v1.position * d;
+	temp.normal = v1.normal * d;
+	temp.dtexcoord = v1.dtexcoord * d;
+	temp.lmtexcoord = v1.lmtexcoord * d;
+	return temp;
+}
 
 std::vector<unsigned int> BSPLoader::get_indices()
 {
@@ -24,7 +51,7 @@ void BSPLoader::build_indices()
 		auto& face = file_faces[i];
 
 		// only handle polygon + mesh types at the moment, not patches or billboards.
-		if (face.type == 1 || face.type == 3)
+		if (face.type == FaceTypes::Polygon || face.type == FaceTypes::Model)
 		{
 			int ind = indices.size();
 
@@ -207,17 +234,205 @@ void BSPLoader::load_models()
 	std::vector<entity> entities;
 	parser.parse(file_entities.ents, entities);
 
+	// store the data in the models vector.
 	for (int i = 0; i < entities.size(); ++i)
 	{
 		// pull out any misc_model entries
 		if (entities[i].get_string("classname") != "misc_model") continue;
-		
+	
 		// load the relevant md3
 		std::string filename = entities[i].get_string("model");
 		std::string path = "data/" + filename;
 
-		// store the data in the models vector.
-		PHYSFS_File* handle = PHYSFS_openRead(path.c_str());
+		Model model = MD3Loader::Load(path);
+		model.LoadSurfaceAssets();
+
+		float angle = entities[i].get_float("angle");
+		glm::vec3 origin;
+		entities[i].get_vec3("origin", origin);
+		angle = angle / 180 * M_PI;
+		float angleCos = cos(angle);
+		float angleSin = sin(angle);
+
+		std::vector<Surface> md3surfaces = model.GetSurfaces();
+		for (auto surface : md3surfaces)
+		{
+			// convert the models surfaces into bsp style faces...
+			face _face;
+
+			_face.texture = file_textures.size();
+
+			for (auto shade : surface.shaders)
+			{
+				texture tex;
+				shade.name.copy(tex.name, 64);
+				tex.name[shade.name.size()] = '\0';
+				tex.flags = 0;
+				tex.contents = 0;
+				file_textures.push_back(tex);
+			}
+
+			_face.type = 3;
+			_face.effect = -1;
+			_face.lm_index = -1;
+			_face.n_vertexes = surface.vertices.size();
+			_face.vertex = file_vertices.size();
+
+			_face.n_meshverts = surface.triangles.size() * 3;
+			_face.meshvert = file_meshverts.size();
+
+			for (int i = 0; i < surface.triangles.size(); ++i)
+			{
+				meshvert vertA { surface.triangles[i].indexes[0] };
+				meshvert vertB { surface.triangles[i].indexes[1] };
+				meshvert vertC { surface.triangles[i].indexes[2] };
+				file_meshverts.push_back(vertA);
+				file_meshverts.push_back(vertB);
+				file_meshverts.push_back(vertC);
+			}
+
+			for (int i = 0; i < _face.n_vertexes; ++i)
+			{
+				auto surfvert = surface.vertices[i];
+				vertex vert;
+				vert.colour[0] = 255;
+				vert.colour[1] = 255;
+				vert.colour[2] = 255;
+				vert.colour[3] = 255;
+
+				vert.dtexcoord[0] = surface.texcoords[i].st.r;
+				vert.dtexcoord[1] = surface.texcoords[i].st.g;
+
+				vert.lmtexcoord[0] = 0;
+				vert.lmtexcoord[1] = 0;
+
+				vert.position[0] = origin.x + MD3_XYZ_SCALE * (surfvert.vert.x * angleCos - surfvert.vert.y * angleSin);
+				vert.position[1] = origin.y + MD3_XYZ_SCALE * (surfvert.vert.x * angleSin + surfvert.vert.y * angleCos);
+				vert.position[2] = origin.z + MD3_XYZ_SCALE * (surfvert.vert.z);
+
+				float lat = (surfvert.normal >> 8) & 0xff;
+				float lng = (surfvert.normal & 0xff);
+				lat *= M_PI / 128;
+				lng *= M_PI / 128;
+
+				glm::vec3 temp;
+				temp.x = cos(lat) * sin(lng);
+				temp.y = sin(lat) * sin(lng);
+				temp.z = cos(lng);
+
+				vert.normal[0] = temp.x * angleCos - temp.y * angleSin;
+				vert.normal[1] = temp.x * angleSin + temp.y * angleCos;
+				vert.normal[2] = temp.z;
+
+				file_vertices.push_back(vert);
+			}
+
+			file_faces.push_back(_face);
+		}
+		models.push_back(model);
+	}
+}
+
+void BSPLoader::tesselate(int controlOffset, int controlWidth, int vOffset, int iOffset)
+{
+	vertex controls[9];
+	int cIndex = 0;
+	for (int c = 0; c < 3; ++c)
+	{
+		int pos = c * controlWidth;
+		controls[cIndex++] = file_vertices[controlOffset + pos];
+		controls[cIndex++] = file_vertices[controlOffset + pos + 1];
+		controls[cIndex++] = file_vertices[controlOffset + pos + 2];
+	}
+
+	int L1 = bezierLevel + 1;
+
+	for (int j = 0; j <= bezierLevel; ++j)
+	{
+		float a = (float)j / bezierLevel;
+		float b = 1.f - a;
+		file_vertices[vOffset + j] = controls[0] * b * b + controls[3] * 2 * b * a + controls[6] * a * a;
+	}
+
+	for (int i = 0; i <= bezierLevel; ++i)
+	{
+		float a = (float)i / bezierLevel;
+		float b = 1.f - a;
+
+		vertex temp[3];
+
+		for (int j = 0; j < 3; ++j)
+		{
+			int k = 3 * j;
+			temp[j] = controls[k + 0] * b * b + controls[k + 1] * 2 * b * a + controls[k + 2] * a * a;
+		}
+
+		for (int j = 0; j <= bezierLevel; ++j)
+		{
+			float a = (float)j / bezierLevel;
+			float b = 1.f - a;
+			file_vertices[vOffset + i * L1 + j] = temp[0] * b * b + temp[1] * 2 * b * a + temp[2] * a * a;
+		}
+	}
+
+	for (int i = 0; i <= bezierLevel; ++i)
+	{
+		for (int j = 0; j <= bezierLevel; ++j)
+		{
+			int offset = iOffset + (i * bezierLevel + j) * 6;
+			if(offset >= file_meshverts.size()) break;
+			indices[offset + 0] = (i    ) * L1 + (j    ) + vOffset;
+			indices[offset + 1] = (i    ) * L1 + (j + 1) + vOffset;
+			indices[offset + 2] = (i + 1) * L1 + (j + 1) + vOffset;
+			indices[offset + 3] = (i + 1) * L1 + (j + 1) + vOffset;
+			indices[offset + 4] = (i + 1) * L1 + (j    ) + vOffset;
+			indices[offset + 5] = (i    ) * L1 + (j    ) + vOffset;
+		}
+	}
+}
+
+void BSPLoader::tesselate_patches()
+{
+	int bezierCount = 0;
+	int bezierPatchSize = (bezierLevel + 1) * (bezierLevel + 1);
+	int bezierIndexSize = bezierLevel * bezierLevel * 6;
+
+	for (auto& face : file_faces)
+	{
+		if (face.type != FaceTypes::Patch) continue;
+		int dimX = (face.size[0] - 1) / 2;
+		int dimY = (face.size[1] - 1) / 2;
+		int size = dimX * dimY;
+		bezierCount += size;
+	}
+
+	int iOffset = indices.size();
+	int vOffset = file_vertices.size();
+
+	int newICount = iOffset + bezierCount * bezierIndexSize;
+
+	file_vertices.resize(file_vertices.size() + bezierCount * bezierPatchSize);
+	indices.resize(newICount);
+
+	for (auto& face : file_faces)
+	{
+		if (face.type != FaceTypes::Patch) continue;
+		int dimX = (face.size[0] - 1) / 2;
+		int dimY = (face.size[1] - 1) / 2;
+
+		face.meshvert = iOffset;
+
+		for (int x = 0, n = 0; n < dimX; n++, x = 2 * n)
+		{
+			for (int y = 0, m = 0; m < dimY; m++, y = 2 * m)
+			{
+				tesselate(face.vertex + x + face.size[0] * y, face.size[0], vOffset, iOffset);
+				vOffset += bezierPatchSize;
+				iOffset += bezierIndexSize;
+			}
+		}
+
+		face.n_meshverts = iOffset - face.meshvert;
 	}
 }
 
@@ -236,10 +451,6 @@ void BSPLoader::load_file()
 
 	fs.seekg(offset);
 	fs.read(file_entities.ents, length);
-
-	/*PHYSFS_File* ents = PHYSFS_openWrite("entities.txt");
-	PHYSFS_writeBytes(ents, file_entities.ents, length);
-	PHYSFS_close(ents);*/
 
 	int lightmapCount = file_directory.direntries[14].length / sizeof(lightmap);
 
@@ -272,9 +483,10 @@ void BSPLoader::load_file()
 	fs.read((char*)&file_visdata.vecs[0], sz);
 	fs.close();
 
+	//load_models();
 	build_indices();
+	tesselate_patches();
 	process_textures();
-	process_lightmaps();
-	load_models();
+	process_lightmaps();	
 }
 

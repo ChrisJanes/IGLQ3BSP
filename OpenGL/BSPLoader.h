@@ -12,6 +12,13 @@
 
 // Q3 BSP format reference: http://www.mralligator.com/q3/
 
+namespace FaceTypes {
+	const int Polygon = 1;
+	const int Patch = 2;
+	const int Model = 3;
+	const int Billboard = 4;
+}
+
 #pragma region SurfaceFlags
 const int CONTENTS_SOLID = 0x1;
 const int CONTENTS_LAVA = 0x8;
@@ -119,10 +126,11 @@ struct meshvert
 
 struct vertex
 {
-	float position[3];
-	float dtexcoord[2];
-	float lmtexcoord[2];
-	float normal[3];
+	glm::vec3 position;
+	glm::vec2 dtexcoord;
+	glm::vec2 lmtexcoord;
+	glm::vec3 normal;
+
 	ubyte colour[4];
 };
 
@@ -234,8 +242,8 @@ public:
 	face get_face(int index) const { return file_faces[index]; }
 	shader get_shader(int index) const { return shaders[index]; }
 	GLuint get_lightmap_tex(int index) const { return lightmaps[index].id; }
-	GLuint get_default_lightmap() const { return file_lightmaps.size(); }
-	int get_face_count() const { return file_faces.size(); }
+	GLuint get_default_lightmap() const { return (GLuint)file_lightmaps.size(); }
+	int get_face_count() const { return (int)file_faces.size(); }
 	std::vector<unsigned int> get_indices();
 	meshvert get_meshvert(int index) const { return file_meshverts[index]; }
 	GLuint get_lm_id() const { return lmap_id; }
@@ -250,6 +258,8 @@ private:
 	void combine_lightmaps();
 	void update_lm_coords();
 
+	void tesselate(int controlOffset, int controlWidth, int vOffset, int iOffset);
+	void tesselate_patches();
 	void load_models();
 
 	GLuint lmap_id;
@@ -287,7 +297,7 @@ private:
 	std::vector < lightvol > file_lightvols;
 	visdata file_visdata;
 
-	MD3Loader modelLoader;
+	std::vector<Model> models;
 };
 
 // generic function to read lumps that are sizeof/length style.

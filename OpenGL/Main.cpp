@@ -1,8 +1,6 @@
 #define GLEW_STATIC
 
-#include "stb_image.h"
-
-#include <GL\glew.h>
+#include <GL/glew.h>
 #include <GLFW\glfw3.h>
 #include <glm\glm.hpp>
 #include <glm\gtc\matrix_transform.hpp>
@@ -18,15 +16,6 @@
 #include "BSPLoader.h"
 
 #include "shaders.inc"
-
-/*
-126, 74
-126, 73
-127, 74
-126, 74
-126, 73
-127, 73
-*/
 
 const bool AllowMouse = true;
 const bool SingleDraw = false;
@@ -48,19 +37,21 @@ bool firstMouse = true;
 float lastX = ScreenWidth / 2.0f;
 float lastY = ScreenHeight / 2.0f;
 
+bool loaded = false;
+
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (firstMouse) // initially set to true
 	{
-		lastX = xpos;
-		lastY = ypos;
+		lastX = (float)xpos;
+		lastY = (float)ypos;
 		firstMouse = false;
 	}
 
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos; // reversed since y-coordinates range from bottom to top
-	lastX = xpos;
-	lastY = ypos;
+	float xoffset = (float)xpos - lastX;
+	float yoffset = lastY - (float)ypos; // reversed since y-coordinates range from bottom to top
+	lastX = (float)xpos;
+	lastY = (float)ypos;
 
 	const float sensitivity = 0.1f;
 	xoffset *= sensitivity;
@@ -140,6 +131,7 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 150");
 
+
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CW);
@@ -149,6 +141,8 @@ int main()
 
 	// needs a valid Q3A BSP file.
 	BSPLoader loader{ file, SingleDraw };
+
+	loaded = true;
 
 	std::vector<vertex> vertices = loader.get_vertex_data();
 	
@@ -173,12 +167,12 @@ int main()
 	// load and compile vertex and frag shaders
 
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexSource, NULL);
+	glShaderSource(vertexShader, 1, &bspVertexSource, NULL);
 
 	glCompileShader(vertexShader);
 
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+	glShaderSource(fragmentShader, 1, &bspFragmentSource, NULL);
 
 	glCompileShader(fragmentShader);
 
@@ -275,44 +269,45 @@ int main()
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		if (!SingleDraw)
+		if (loaded)
 		{
-			// render each face individually - this currently leads to holes in the mesh
-			// but is probably the necessary approach to correctly render lightmaps + textures.
-			for (int i = 0; i < faceCount; ++i)
+			if (!SingleDraw)
 			{
-				face _face = loader.get_face(i);
-				if (_face.type == 1 || _face.type == 3)
+				// render each face individually - this currently leads to holes in the mesh
+				// but is probably the necessary approach to correctly render lightmaps + textures.
+				for (int i = 0; i < faceCount; ++i)
 				{
-					int lm = _face.lm_index;
-					shader _shader = loader.get_shader(_face.texture);
-					if (!_shader.render || _shader.transparent) continue; // don't render transparent surfaces yet!
-					if (lm < 0) lm = loader.get_default_lightmap(); // right now, we'll assign a "default" lightmap to a surface without a valid index.
+					face _face = loader.get_face(i);
+					if (_face.type != FaceTypes::Billboard)
+					{
+						int lm = _face.lm_index;
+						shader _shader = loader.get_shader(_face.texture);
+						if (!_shader.render || _shader.transparent) continue; // don't render transparent surfaces yet!
+						if (lm < 0) lm = loader.get_default_lightmap(); // right now, we'll assign a "default" lightmap to a surface without a valid index.
 
-					if (_face.effect >= 0)
-						continue;
+						if (_face.effect >= 0)
+							continue;
 
-					GLuint texId = loader.get_lightmap_tex(lm);
+						GLuint texId = loader.get_lightmap_tex(lm);
 
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, _shader.id);
+						glActiveTexture(GL_TEXTURE0);
+						glBindTexture(GL_TEXTURE_2D, _shader.id);
 
-					glActiveTexture(GL_TEXTURE1);
-					glBindTexture(GL_TEXTURE_2D, texId);
+						glActiveTexture(GL_TEXTURE1);
+						glBindTexture(GL_TEXTURE_2D, texId);
 
-					glDrawElements(GL_TRIANGLES, _face.n_meshverts, GL_UNSIGNED_INT, (void*)(long)(_face.meshvert * sizeof(GLuint)));
+						glDrawElements(GL_TRIANGLES, _face.n_meshverts, GL_UNSIGNED_INT, (void*)(long)(_face.meshvert * sizeof(GLuint)));
+					}
 				}
-
+			}
+			else
+			{
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, loader.get_lm_id());
+				// just draw everything in one fell swoop - all renders correctly, but can't easily do lightmaps this way!
+				glDrawElements(GL_TRIANGLES, elements.size(), GL_UNSIGNED_INT, 0);
 			}
 		}
-		else
-		{
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, loader.get_lm_id());
-			// just draw everything in one fell swoop - all renders correctly, but can't easily do lightmaps this way!
-			glDrawElements(GL_TRIANGLES, elements.size(), GL_UNSIGNED_INT, 0);
-		}
-
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			glfwSetWindowShouldClose(window, GL_TRUE);
 
