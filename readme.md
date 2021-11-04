@@ -10,7 +10,7 @@ It requires the following libraries:
 
 - [SOIL2](https://github.com/SpartanJ/SOIL2/)
 - [GLEW (2.1.0)](http://glew.sourceforge.net/)
-- [GLFW (3.3.5)] (https://github.com/brackeen/glfm)
+- [GLFW (3.3.5)](https://github.com/brackeen/glfm)
 - [GLM](https://github.com/g-truc/glm)
 
 TODO:
