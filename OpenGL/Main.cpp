@@ -8,6 +8,7 @@
 
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "imfilebrowser.h"
 
 #include <thread>
 
@@ -17,7 +18,7 @@
 
 #include "shaders.inc"
 
-const bool AllowMouse = true;
+bool AllowMouse = false;
 const bool SingleDraw = false;
 
 const int ScreenWidth = 1280;
@@ -29,7 +30,8 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 //const std::string file = "/data/cube.bsp";
 //const std::string file = "/data/q3dm0.bsp";
-const std::string file = "/data/maps/q3dm0.bsp";
+//const std::string file = "/data/maps/q3dm0.bsp";
+const std::string file = "/data/maps/q3ctf1.bsp";
 
 float yaw;
 float pitch;
@@ -38,10 +40,13 @@ bool firstMouse = true;
 float lastX = ScreenWidth / 2.0f;
 float lastY = ScreenHeight / 2.0f;
 
-bool loaded = false;
+GLuint shaderProgram;
+int faceCount;
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
+	if (!AllowMouse) return;
+
 	if (firstMouse) // initially set to true
 	{
 		lastX = (float)xpos;
@@ -86,67 +91,27 @@ void processInput(GLFWwindow* window)
 		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 
-int main()
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	// initialise physfs:
-	PHYSFS_init("");
-	PHYSFS_setSaneConfig("cjanes", "bsp_renderer", "pk3", false, true);
-	PHYSFS_mount("F:/SteamLibrary/steamapps/common/Quake 3 Arena/baseq3/", "/data/", true);
-
-	char** files = PHYSFS_enumerateFiles("/data");
-	char** i;
-	for (i = files; *i != NULL; i++)
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE)
 	{
-		std::string file{ *i };
-		if (file.length() > 4 && file.substr(file.length() - 4) == ".pk3")
+		AllowMouse = !AllowMouse;
+		if (AllowMouse)
 		{
-			std::string fullfile = "/data/" + file;
-			std::string path = PHYSFS_getRealDir(fullfile.c_str());
-			path.append(file);
-			PHYSFS_mount(path.c_str(), "/data/", 0);
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+		else {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 	}
-	PHYSFS_freeList(files);
+		
+}
 
-	glfwInit();
+void loadBSP(std::string file, BSPLoader &loader, std::vector<vertex>& vertices, std::vector<unsigned int> &elements)
+{
+	loader.SetBSPFile(file);
+	vertices = loader.get_vertex_data();
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-	// create windowed monitor
-	GLFWwindow* window = glfwCreateWindow(ScreenWidth, ScreenHeight, "OG Q3 BSP Renderer", nullptr, nullptr);
-
-	glfwMakeContextCurrent(window);
-
-	glewExperimental = GL_TRUE;
-	glewInit();
-
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 150");
-
-
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glFrontFace(GL_CW);
-	glEnable(GL_DEPTH_TEST);
-
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-	// needs a valid Q3A BSP file.
-	BSPLoader loader{ file, SingleDraw };
-
-	loaded = true;
-
-	std::vector<vertex> vertices = loader.get_vertex_data();
-	
 	// generate and bind array and buffer objects.
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
@@ -162,7 +127,7 @@ int main()
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), &vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	auto elements = loader.get_indices();
+	elements = loader.get_indices();
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, elements.size() * sizeof(unsigned int), &elements[0], GL_STATIC_DRAW);
 
 	// load and compile vertex and frag shaders
@@ -177,7 +142,7 @@ int main()
 
 	glCompileShader(fragmentShader);
 
-	GLuint shaderProgram = glCreateProgram();
+	shaderProgram = glCreateProgram();
 	glAttachShader(shaderProgram, vertexShader);
 	glAttachShader(shaderProgram, fragmentShader);
 
@@ -201,7 +166,7 @@ int main()
 
 		// Provide the infolog in whatever manner you deem best.
 		// Exit with failure.
-		return 0;
+		return;
 	}
 
 	glUseProgram(shaderProgram);
@@ -227,13 +192,86 @@ int main()
 	glEnableVertexAttribArray(uvAttrib);
 	glEnableVertexAttribArray(lmAttrib);
 
-	int faceCount = loader.get_face_count();
+	faceCount = loader.get_face_count();
+}
 
-	if (AllowMouse)
+void mount_file_data(std::string path)
+{
+	int mount = PHYSFS_mount(path.c_str(), "/data/", true);
+
+	if (mount == 0)
 	{
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		glfwSetCursorPosCallback(window, mouse_callback);
+		std::cout << PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()) << '\n';
+		return;
 	}
+
+	char** files = PHYSFS_enumerateFiles("/data");
+	char** i;
+	for (i = files; *i != NULL; i++)
+	{
+		std::string file{ *i };
+		if (file.length() > 4 && file.substr(file.length() - 4) == ".pk3")
+		{
+			std::string fullfile = "/data/" + file;
+			std::string path = PHYSFS_getRealDir(fullfile.c_str());
+			path.append(file);
+			PHYSFS_mount(path.c_str(), "/data/", 0);
+		}
+	}
+	PHYSFS_freeList(files);
+}
+
+int main()
+{
+	// initialise physfs:
+	PHYSFS_init("");
+	PHYSFS_setSaneConfig("cjanes", "bsp_renderer", "pk3", false, true);
+
+	glfwInit();
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	// create windowed monitor
+	GLFWwindow* window = glfwCreateWindow(ScreenWidth, ScreenHeight, "OG Q3 BSP Renderer", nullptr, nullptr);
+
+	glfwMakeContextCurrent(window);
+
+	glfwSetKeyCallback(window, key_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+	glewExperimental = GL_TRUE;
+	glewInit();
+
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 150");
+
+	ImGui::FileBrowser fileDialog{ ImGuiFileBrowserFlags_SelectDirectory };
+	fileDialog.SetTitle("Q3A Data folder");
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CW);
+	glEnable(GL_DEPTH_TEST);
+
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+	// needs a valid Q3A BSP file.
+	BSPLoader loader{ SingleDraw };
+
+	std::vector<vertex> vertices;
+	std::vector<unsigned int> elements;
+	
+	int selected_index = 0;
+
+	char** map_files = PHYSFS_enumerateFiles("/data/maps");
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -265,12 +303,55 @@ int main()
 		GLint modelProj = glGetUniformLocation(shaderProgram, "model");
 		glUniformMatrix4fv(modelProj, 1, GL_FALSE, glm::value_ptr(model));
 
+		if (!AllowMouse)
+		{
+			ImGui::Begin("Options");
+			if (ImGui::Button("Add Data Folder"))
+			{
+				fileDialog.Open();
+			}
+			ImGui::BeginListBox("BSP Files", ImVec2(-FLT_MIN, -FLT_MIN));
+			char** i;
+			int count = 0;
+			for (i = map_files; *i != NULL; i++)
+			{
+				std::string file{ *i };
+				if (file.length() > 4 && file.substr(file.length() - 4) == ".bsp")
+				{
+					std::string fullfile = "/data/maps/" + file;
+					
+					const bool is_selected = (selected_index == count);
+					if (ImGui::Selectable(file.c_str(), is_selected))
+					{
+						selected_index = count;
+						loadBSP(fullfile, loader, vertices, elements);
+						faceCount = loader.get_face_count();
+					}
+
+					if (is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				count++;
+			}
+			ImGui::EndListBox();
+			ImGui::End();
+		}
+
+		fileDialog.Display();
+
+		if (fileDialog.HasSelected())
+		{
+			mount_file_data(fileDialog.GetSelected().string() + "/");
+			map_files = PHYSFS_enumerateFiles("/data/maps");
+			fileDialog.ClearSelected();
+		}
+
 		ImGui::Render();
 		glViewport(0, 0, ScreenWidth, ScreenHeight);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		if (loaded)
+		if (loader.is_loaded())
 		{
 			if (!SingleDraw)
 			{
@@ -309,6 +390,7 @@ int main()
 				glDrawElements(GL_TRIANGLES, elements.size(), GL_UNSIGNED_INT, 0);
 			}
 		}
+
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			glfwSetWindowShouldClose(window, GL_TRUE);
 

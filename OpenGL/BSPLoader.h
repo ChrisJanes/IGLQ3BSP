@@ -239,6 +239,14 @@ public:
 		load_file();
 	}
 
+	BSPLoader(bool single) : single_draw(single) {}
+
+	void SetBSPFile(std::string filename)
+	{
+		file = filename;
+		load_file();
+	}
+
 	std::vector<vertex> get_vertex_data() const { return file_vertices; }
 	face get_face(int index) const { return file_faces[index]; }
 	shader get_shader(int index) const { return shaders[index]; }
@@ -248,6 +256,8 @@ public:
 	std::vector<unsigned int> get_indices();
 	meshvert get_meshvert(int index) const { return file_meshverts[index]; }
 	GLuint get_lm_id() const { return lmap_id; }
+
+	bool is_loaded() const { return loaded; }
 private:
 	void get_lump_position(int index, int& offset, int& length);
 
@@ -258,6 +268,8 @@ private:
 
 	void combine_lightmaps();
 	void update_lm_coords();
+
+	void clear_memory();
 
 	void tesselate(int controlOffset, int controlWidth, int vOffset, int iOffset);
 	void tesselate_patches();
@@ -275,6 +287,8 @@ private:
 	bool single_draw;
 
 	int offset, length;
+
+	bool loaded{ false };
 
 	std::vector<unsigned int> indices;
 

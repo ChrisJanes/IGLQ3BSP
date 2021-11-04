@@ -173,6 +173,9 @@
     <ClInclude Include="EntityParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="imfilebrowser.h">
+      <Filter>Header Files\IMGUI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders.inc">

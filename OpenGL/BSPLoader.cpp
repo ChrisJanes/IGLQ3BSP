@@ -13,22 +13,22 @@ const int bezierLevel = 10;
 
 vertex operator+(const vertex& v1, const vertex& v2)
 {
-	vertex temp;
-	temp.position = v1.position + v2.position;
-	temp.normal = v1.normal + v2.normal;
-	temp.dtexcoord = v1.dtexcoord + v2.dtexcoord;
-	temp.lmtexcoord = v1.lmtexcoord + v2.lmtexcoord;
-	return temp;
+	return vertex{ 
+		v1.position + v2.position,	   
+		v1.dtexcoord + v2.dtexcoord,	   
+		v1.lmtexcoord + v2.lmtexcoord,	   
+		v1.normal + v2.normal
+	};
 }
 
 vertex operator*(const vertex& v1, const float& d)
 {
-	vertex temp;
-	temp.position = v1.position * d;
-	temp.normal = v1.normal * d;
-	temp.dtexcoord = v1.dtexcoord * d;
-	temp.lmtexcoord = v1.lmtexcoord * d;
-	return temp;
+	return vertex{ 
+		v1.position * d, 
+		v1.dtexcoord * d, 
+		v1.lmtexcoord * d, 
+		v1.normal * d 
+	};
 }
 
 std::vector<unsigned int> BSPLoader::get_indices()
@@ -225,6 +225,23 @@ void BSPLoader::update_lm_coords()
 	}
 }
 
+void BSPLoader::clear_memory()
+{
+	for (auto shader : shaders)
+	{
+		glDeleteTextures(1, &shader.id);
+	}
+
+	for (auto lm : lightmaps)
+	{
+		glDeleteTextures(1, &lm.id);
+	}
+
+	shaders.resize(0);
+	lightmaps.resize(0);
+	indices.resize(0);
+}
+
 void BSPLoader::load_models()
 {
 	// parse the entity lump
@@ -380,7 +397,7 @@ void BSPLoader::tesselate(int controlOffset, int controlWidth, int vOffset, int 
 		for (int j = 0; j <= bezierLevel; ++j)
 		{
 			int offset = iOffset + (i * bezierLevel + j) * 6;
-			//if(offset >= file_meshverts.size()) break;
+			//if(offset+5 >= indices.size()) break;
 			indices[offset + 0] = (i    ) * L1 + (j    ) + vOffset;
 			indices[offset + 1] = (i    ) * L1 + (j + 1) + vOffset;
 			indices[offset + 2] = (i + 1) * L1 + (j + 1) + vOffset;
@@ -439,9 +456,19 @@ void BSPLoader::tesselate_patches()
 
 void BSPLoader::load_file()
 {
+	if (loaded)
+	{
+		clear_memory();
+	}
+
 	// open saved file for reading as binary
 	PHYSFS_File *handle = PHYSFS_openRead(file.c_str());
 
+	if (handle == NULL)
+	{ 
+		std::cout << "BSPLoader error: " << PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()) << '\n';
+		return;
+	}
 
 	// read directory block
 	PHYSFS_readBytes(handle, (char*)&file_directory, sizeof(Directory));
@@ -477,7 +504,6 @@ void BSPLoader::load_file()
 	// 16 is vis data
 	get_lump_position(16, offset, length);
 
-
 	PHYSFS_seek(handle, offset);
 	
 	PHYSFS_readBytes(handle, (char*)&file_visdata, sizeof(int) * 2);
@@ -495,5 +521,7 @@ void BSPLoader::load_file()
 	tesselate_patches();
 	process_textures();
 	process_lightmaps();	
+
+	loaded = true;
 }
 
