@@ -1,5 +1,7 @@
 # Open GL Q3 BSP Renderer
 
+![Screenshot of Q3 BSP Renderer](/docs/images/q3bsp_2.png)
+
 This project was started as a way of getting back up to speed with OpenGL. It 
 is written in C++.
 
