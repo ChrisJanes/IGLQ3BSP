@@ -516,7 +516,7 @@ void BSPLoader::load_file()
 	
 	PHYSFS_close(handle);
 
-	//load_models();
+	load_models();
 	build_indices();
 	tesselate_patches();
 	process_textures();
