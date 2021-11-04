@@ -15,7 +15,7 @@ It requires the following libraries:
 
 TODO:
 
-- [ ] Allow specifying of path to Q3 data files
-- [ ] Provide map selection method
+- [x] Allow specifying of path to Q3 data files
+- [x] Provide map selection method
 - [ ] Render skyboxes
 - [ ] Generate texture atlases and update UV coordinates for vertices
