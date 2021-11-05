@@ -6,17 +6,22 @@
 #include <glm\gtc\matrix_transform.hpp>
 #include <glm\gtc\type_ptr.hpp>
 
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "imfilebrowser.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imfilebrowser.h"
 
 #include <thread>
+#include <iostream>
+
+#include <nlohmann/json.hpp>
 
 #include "physfs/physfs.h"
 
 #include "BSPLoader.h"
 
 #include "shaders.inc"
+
+using json = nlohmann::json;
 
 bool AllowMouse = false;
 const bool SingleDraw = false;
@@ -27,11 +32,6 @@ const int ScreenHeight = 720;
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-//const std::string file = "/data/cube.bsp";
-//const std::string file = "/data/q3dm0.bsp";
-//const std::string file = "/data/maps/q3dm0.bsp";
-const std::string file = "/data/maps/q3ctf1.bsp";
 
 float yaw;
 float pitch;
@@ -221,11 +221,29 @@ void mount_file_data(std::string path)
 	PHYSFS_freeList(files);
 }
 
+void loadConfigData()
+{
+	const char* configFile = "config.json";
+	std::ifstream i(configFile);
+
+	if (!i.is_open()) return;
+
+	json j;
+	i >> j;
+
+	for (auto path : j["data_paths"])
+	{
+		mount_file_data(path.get<std::string>());
+	}
+}
+
 int main()
 {
 	// initialise physfs:
 	PHYSFS_init("");
 	PHYSFS_setSaneConfig("cjanes", "bsp_renderer", "pk3", false, true);
+
+	loadConfigData();
 
 	glfwInit();
 
@@ -310,30 +328,32 @@ int main()
 			{
 				fileDialog.Open();
 			}
-			ImGui::BeginListBox("BSP Files", ImVec2(-FLT_MIN, -FLT_MIN));
-			char** i;
-			int count = 0;
-			for (i = map_files; *i != NULL; i++)
+			if (ImGui::BeginListBox("BSP Files", ImVec2(-FLT_MIN, -FLT_MIN)))
 			{
-				std::string file{ *i };
-				if (file.length() > 4 && file.substr(file.length() - 4) == ".bsp")
+				char** i;
+				int count = 0;
+				for (i = map_files; *i != NULL; i++)
 				{
-					std::string fullfile = "/data/maps/" + file;
-					
-					const bool is_selected = (selected_index == count);
-					if (ImGui::Selectable(file.c_str(), is_selected))
+					std::string file{ *i };
+					if (file.length() > 4 && file.substr(file.length() - 4) == ".bsp")
 					{
-						selected_index = count;
-						loadBSP(fullfile, loader, vertices, elements);
-						faceCount = loader.get_face_count();
-					}
+						std::string fullfile = "/data/maps/" + file;
 
-					if (is_selected)
-						ImGui::SetItemDefaultFocus();
+						const bool is_selected = (selected_index == count);
+						if (ImGui::Selectable(file.c_str(), is_selected))
+						{
+							selected_index = count;
+							loadBSP(fullfile, loader, vertices, elements);
+							faceCount = loader.get_face_count();
+						}
+
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					count++;
 				}
-				count++;
+				ImGui::EndListBox();
 			}
-			ImGui::EndListBox();
 			ImGui::End();
 		}
 

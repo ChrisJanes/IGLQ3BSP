@@ -14,6 +14,7 @@ It requires the following libraries:
 - [GLEW (2.1.0)](http://glew.sourceforge.net/)
 - [GLFW (3.3.5)](https://github.com/brackeen/glfm)
 - [GLM](https://github.com/g-truc/glm)
+- [Nlohmann JSON](https://github.com/nlohmann/json)
 
 TODO:
 
