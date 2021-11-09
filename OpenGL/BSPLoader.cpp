@@ -258,9 +258,16 @@ void BSPLoader::load_models()
 	
 		// load the relevant md3
 		std::string filename = entities[i].get_string("model");
+
+		if (filename == "") continue;
+
 		std::string path = "data/" + filename;
 
-		Model model = MD3Loader::Load(path);
+		Model model; 
+		bool loaded = MD3Loader::Load(model, path);
+
+		if (!loaded) continue;
+
 		model.LoadSurfaceAssets();
 
 		float angle = entities[i].get_float("angle");
@@ -516,7 +523,7 @@ void BSPLoader::load_file()
 	
 	PHYSFS_close(handle);
 
-	//load_models();
+	load_models();
 	build_indices();
 	tesselate_patches();
 	process_textures();

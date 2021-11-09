@@ -89,6 +89,7 @@ struct MD3Header {
 
 class Model {
 public:
+	Model() {};
 	Model(std::vector<Surface> surfs) : surfaces{ surfs } { }
 	void LoadSurfaceAssets();
 	std::vector<Surface> GetSurfaces() { return surfaces; }
@@ -99,5 +100,5 @@ private:
 
 class MD3Loader {
 public:
-	static Model Load(std::string filename);
+	static bool Load(Model& model, std::string filename);
 };

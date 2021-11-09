@@ -16,9 +16,11 @@ int    LongSwap(int l)
 	return ((int)b1 << 24) + ((int)b2 << 16) + ((int)b3 << 8) + b4;
 }
 
-Model MD3Loader::Load(std::string filename)
+bool MD3Loader::Load(Model& model, std::string filename)
 {
 	PHYSFS_File* handle = PHYSFS_openRead(filename.c_str());
+
+	if (!handle) return false;
 
 	MD3Header header;
 	PHYSFS_readBytes(handle, &header, sizeof(MD3Header));
@@ -68,7 +70,8 @@ Model MD3Loader::Load(std::string filename)
 
 	PHYSFS_close(handle);
 
-	return Model{ surfaces };
+	model = Model{ surfaces };
+	return true;
 }
 
 void Model::LoadSurfaceAssets()
