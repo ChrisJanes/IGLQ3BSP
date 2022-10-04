@@ -11,6 +11,7 @@
 constexpr auto MD3_XYZ_SCALE = (1.0/64);
 const int bezierLevel = 10;
 
+// addition operator for vertices
 vertex operator+(const vertex& v1, const vertex& v2)
 {
 	return vertex{ 
